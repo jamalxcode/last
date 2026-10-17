@@ -1,0 +1,89 @@
+diff --git a/configure.ac b/configure.ac
+index ae1320b..6749d4d 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -115,7 +115,7 @@ AS_IF([test "x$with_libpng" != xno], [
+ 
+ # TODO: We currently link everything against libraries that don't need it.
+ # Use the specific library CFLAGS/LIBS variables instead of setting them here.
+-EMFLAGS="-gsource-map -s INVOKE_RUN=1 -s USE_SDL=2 -s USE_SDL_MIXER=2 -s LEGACY_GL_EMULATION=0 -s USE_SDL_NET=2 -s ASSERTIONS=0 -s WASM=1 -s ALLOW_MEMORY_GROWTH=0 -s FORCE_FILESYSTEM=1 -s EXTRA_EXPORTED_RUNTIME_METHODS=[['FS','ccall']] -s SAFE_HEAP=1 -s EXIT_RUNTIME=1 -s STACK_OVERFLOW_CHECK=1 -s PROXY_POSIX_SOCKETS=0 -s USE_PTHREADS=0 -s PROXY_TO_PTHREAD=0 -s TOTAL_MEMORY=64MB -s ERROR_ON_UNDEFINED_SYMBOLS=0 -s ASYNCIFY -O3 --source-map-base /"
++EMFLAGS="-s USE_SDL=2 -s USE_SDL_MIXER=2 -s USE_SDL_NET=2 -s ASSERTIONS=0 -s WASM=1 -s ALLOW_MEMORY_GROWTH=1 -s INITIAL_MEMORY=128MB -s FORCE_FILESYSTEM=1 -s EXPORTED_RUNTIME_METHODS=[FS,ccall,callMain] -s EXIT_RUNTIME=1 -s USE_PTHREADS=0 -s ERROR_ON_UNDEFINED_SYMBOLS=0 -s ASYNCIFY -O3"
+ 
+ CFLAGS="$CFLAGS $SDL_CFLAGS ${SAMPLERATE_CFLAGS:-} ${PNG_CFLAGS:-} $EMFLAGS"
+ LDFLAGS="$LDFLAGS $SDL_LIBS ${SAMPLERATE_LIBS:-} ${PNG_LIBS:-} $EMFLAGS -lwebsocket.js"
+diff --git a/opl/opl.c b/opl/opl.c
+index a1aa1d9..718630c 100644
+--- a/opl/opl.c
++++ b/opl/opl.c
+@@ -23,6 +23,10 @@
+ 
+ #include "SDL.h"
+ 
++#ifdef __EMSCRIPTEN__
++#include <emscripten.h>
++#endif
++
+ #include "opl.h"
+ #include "opl_internal.h"
+ 
+@@ -285,6 +289,12 @@ opl_init_result_t OPL_Detect(void)
+     int result1, result2;
+     int i;
+ 
++#ifdef __EMSCRIPTEN__
++    // The browser build always uses the software OPL3 emulator, and the
++    // timer-based probe below would block forever on a single thread.
++    return OPL_INIT_OPL3;
++#endif
++
+     // Reset both timers:
+     OPL_WriteRegister(OPL_REG_TIMER_CTRL, 0x60);
+ 
+@@ -491,6 +501,13 @@ void OPL_Delay(uint64_t us)
+ 
+     // Wait until the callback is invoked.
+ 
++#ifdef __EMSCRIPTEN__
++    // No threads: yield to the browser so the audio callback can run.
++    while (!delay_data.finished)
++    {
++        emscripten_sleep(1);
++    }
++#else
+     SDL_LockMutex(delay_data.mutex);
+ 
+     while (!delay_data.finished)
+@@ -499,6 +516,7 @@ void OPL_Delay(uint64_t us)
+     }
+ 
+     SDL_UnlockMutex(delay_data.mutex);
++#endif
+ 
+     // Clean up.
+ 
+diff --git a/src/doomtype.h b/src/doomtype.h
+index 9947a07..36429a5 100644
+--- a/src/doomtype.h
++++ b/src/doomtype.h
+@@ -100,7 +100,20 @@
+ 
+ #include <inttypes.h>
+ 
+-#if defined(__cplusplus) || defined(__bool_true_false_are_defined)
++#if defined(__EMSCRIPTEN__) && !defined(__cplusplus)
++
++// Some Emscripten headers pull in <stdbool.h>, so whether `boolean` became a
++// 1-byte bool or a 4-byte enum depended on include order, and globals like
++// `netgame` ended up with different sizes in different files. Use an int
++// everywhere instead; the engine also relies on storing -1 in a boolean.
++
++typedef int boolean;
++
++#ifndef __bool_true_false_are_defined
++enum { false, true };
++#endif
++
++#elif defined(__cplusplus) || defined(__bool_true_false_are_defined)
+ 
+ // Use builtin bool type with C++.
+ 

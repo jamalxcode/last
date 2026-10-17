@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Last Marine Standing</title>
+  <meta name="description" content="A classic 90s-style first-person shooter that runs right in your browser.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💀</text></svg>">
+  <style>
+    :root {
+      --bg: #0b0606;
+      --panel: #1a0d0b;
+      --ink: #f1dcc0;
+      --muted: #a88c78;
+      --accent: #e0461b;
+      --accent-2: #f2b950;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; }
+    body {
+      background: radial-gradient(ellipse at top, #2a0c07 0%, var(--bg) 60%) fixed;
+      color: var(--ink);
+      font: 15px/1.5 "Courier New", ui-monospace, monospace;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 16px;
+    }
+    h1 {
+      margin: 8px 0 2px;
+      font-size: clamp(22px, 5vw, 40px);
+      letter-spacing: 0.08em;
+      color: var(--accent-2);
+      text-shadow: 0 0 12px #c0300a, 2px 2px 0 #300;
+      text-align: center;
+    }
+    .tagline { color: var(--muted); margin: 0 0 14px; text-align: center; }
+    #screen {
+      position: relative;
+      width: min(100%, 960px, calc((100vh - 200px) * 4 / 3));
+      min-width: 280px;
+      aspect-ratio: 4 / 3;
+      background: #000;
+      border: 2px solid #3a1a12;
+      box-shadow: 0 0 40px rgba(224, 70, 27, 0.25);
+    }
+    /* The canvas must have no border or padding, or mouse coordinates will be wrong. */
+    canvas#canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      image-rendering: pixelated;
+      outline: none;
+    }
+    #overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      background: rgba(0, 0, 0, 0.45) url("title.png") center / contain no-repeat;
+      background-blend-mode: multiply;
+      cursor: pointer;
+      text-align: center;
+      padding: 16px;
+    }
+    #overlay[hidden] { display: none; }
+    #start {
+      font: inherit;
+      font-size: clamp(16px, 3vw, 22px);
+      font-weight: bold;
+      letter-spacing: 0.1em;
+      color: #fff;
+      background: var(--accent);
+      border: 2px solid var(--accent-2);
+      padding: 10px 26px;
+      cursor: pointer;
+      box-shadow: 0 0 18px rgba(224, 70, 27, 0.6);
+    }
+    #start:disabled { opacity: 0.6; cursor: wait; }
+    #status { color: var(--ink); min-height: 1.5em; text-shadow: 1px 1px 0 #000; }
+    #bar { width: min(320px, 80%); height: 8px; background: #2a1410; border: 1px solid #5a2a1e; }
+    #bar > div { height: 100%; width: 0; background: var(--accent); transition: width 0.2s; }
+    .controls {
+      width: min(100%, 960px);
+      margin-top: 16px;
+      background: var(--panel);
+      border: 1px solid #3a1a12;
+      padding: 12px 16px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+      gap: 4px 20px;
+    }
+    .controls h2 { grid-column: 1 / -1; margin: 0 0 6px; font-size: 16px; color: var(--accent-2); }
+    kbd {
+      background: #2e1712;
+      border: 1px solid #5a2a1e;
+      border-bottom-width: 2px;
+      padding: 0 5px;
+      font: inherit;
+      color: #fff;
+    }
+    footer { margin-top: 16px; color: var(--muted); font-size: 12px; text-align: center; max-width: 960px; }
+    footer a { color: var(--accent-2); }
+  </style>
+</head>
+<body>
+  <h1>LAST MARINE STANDING</h1>
+  <p class="tagline">One marine. One base. No backup.</p>
+
+  <div id="screen">
+    <canvas id="canvas" tabindex="-1" oncontextmenu="event.preventDefault()"></canvas>
+    <div id="overlay">
+      <button id="start" disabled>LOADING…</button>
+      <div id="bar"><div></div></div>
+      <div id="status">Downloading game data…</div>
+    </div>
+  </div>
+
+  <section class="controls" aria-label="Controls">
+    <h2>Controls</h2>
+    <div><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move / strafe</div>
+    <div><kbd>Mouse</kbd> look &amp; turn</div>
+    <div><kbd>Click</kbd> / <kbd>Space</kbd> fire</div>
+    <div><kbd>E</kbd> open doors / use</div>
+    <div><kbd>Shift</kbd> run</div>
+    <div><kbd>1</kbd>–<kbd>7</kbd> switch weapon</div>
+    <div><kbd>Tab</kbd> map</div>
+    <div><kbd>Esc</kbd> menu (release mouse)</div>
+    <div><kbd>F</kbd> fullscreen</div>
+  </section>
+
+  <footer>
+    Engine: <a href="https://github.com/chocolate-doom/chocolate-doom">Chocolate Doom</a>
+    via <a href="https://github.com/cloudflare/doom-wasm">doom-wasm</a> (GNU GPL v2).
+    Levels, art, sound &amp; music: <a href="https://freedoom.github.io/">Freedoom</a> (BSD license).
+    Not affiliated with id Software or Bethesda.
+  </footer>
+
+  <script>
+    const overlay = document.getElementById("overlay");
+    const startBtn = document.getElementById("start");
+    const statusEl = document.getElementById("status");
+    const barEl = document.querySelector("#bar > div");
+    const canvas = document.getElementById("canvas");
+    let ready = false;
+
+    const args = ["-iwad", "freedoom1.wad", "-file", "lms.wad", "-window", "-nogui", "-config", "default.cfg"];
+
+    var Module = {
+      noInitialRun: true,
+      canvas,
+      preRun: [() => {
+        Module.FS.createPreloadedFile("", "freedoom1.wad", "freedoom1.wad", true, true);
+        Module.FS.createPreloadedFile("", "lms.wad", "lms.wad", true, true);
+        Module.FS.createPreloadedFile("", "default.cfg", "default.cfg", true, true);
+      }],
+      onRuntimeInitialized() {
+        ready = true;
+        barEl.style.width = "100%";
+        statusEl.textContent = "Ready. Sound on!";
+        startBtn.textContent = "CLICK TO PLAY";
+        startBtn.disabled = false;
+      },
+      print: (t) => console.log(t),
+      printErr: (t) => console.warn(t),
+      setStatus(text) {
+        const m = text && text.match(/\((\d+(?:\.\d+)?)\/(\d+)\)/);
+        if (m) barEl.style.width = (100 * m[1] / m[2]).toFixed(1) + "%";
+      },
+    };
+
+    // Show download progress for the big game-data file.
+    (function trackDownload() {
+      const total = 28795076;
+      const origOpen = XMLHttpRequest.prototype.open;
+      XMLHttpRequest.prototype.open = function (method, url) {
+        if (String(url).endsWith("freedoom1.wad")) {
+          this.addEventListener("progress", (e) => {
+            const pct = Math.min(99, (100 * e.loaded) / (e.lengthComputable ? e.total : total));
+            barEl.style.width = pct.toFixed(1) + "%";
+            statusEl.textContent = `Downloading game data… ${Math.round(pct)}%`;
+          });
+        }
+        return origOpen.apply(this, arguments);
+      };
+    })();
+
+    function start() {
+      if (!ready || overlay.hidden) return;
+      overlay.hidden = true;
+      canvas.focus();
+      if (canvas.requestPointerLock) canvas.requestPointerLock();
+      Module.callMain(args);
+    }
+    overlay.addEventListener("click", start);
+
+    // Re-grab the mouse when clicking back into the game.
+    canvas.addEventListener("click", () => {
+      if (overlay.hidden && document.pointerLockElement !== canvas && canvas.requestPointerLock) {
+        canvas.requestPointerLock();
+      }
+    });
+
+    // F toggles fullscreen on the game frame.
+    document.addEventListener("keydown", (e) => {
+      if (e.code === "KeyF" && overlay.hidden) {
+        const el = document.getElementById("screen");
+        if (document.fullscreenElement) document.exitFullscreen();
+        else if (el.requestFullscreen) el.requestFullscreen();
+      }
+    });
+
+    window.addEventListener("error", () => {
+      statusEl.textContent = "Something went wrong — try reloading the page.";
+    });
+  </script>
+  <script src="engine/lms.js"></script>
+</body>
+</html>
