@@ -4,7 +4,7 @@
 
 A classic 90s-style first-person shooter that runs entirely in your browser: no install, no server, no plugins.
 
-**▶ Play:** https://jamalxcode.github.io/last/
+**▶ Play:** https://last.sala.company
 
 It is the real [Chocolate Doom](https://github.com/chocolate-doom/chocolate-doom) engine compiled to WebAssembly, playing the free [Freedoom: Phase 1](https://freedoom.github.io/) game data (4 episodes, 36 levels, full sound and music), rebranded as *Last Marine Standing*.
 
