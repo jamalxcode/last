@@ -20,9 +20,12 @@ It is the real [Chocolate Doom](https://github.com/chocolate-doom/chocolate-doom
 | `1`–`7` | Switch weapon |
 | `Tab` | Automap |
 | `Esc` | Menu (and release the mouse) |
+| `Enter` / `Space` | Select in menus |
 | `F` | Fullscreen |
 
 Click the game to capture the mouse again after pressing `Esc`.
+
+**Saving:** Esc → Save Game → pick a slot → type a name → `Enter`. Saves and settings are kept in your browser (IndexedDB), so they survive reloads. Clearing site data deletes them.
 
 ## Project layout
 
@@ -65,6 +68,7 @@ The engine is [cloudflare/doom-wasm](https://github.com/cloudflare/doom-wasm) pl
 
 - updates the Emscripten build flags for current SDKs,
 - fixes the music synth (OPL) hanging the browser on startup, so music works,
+- lets Space select menu items, and links IndexedDB storage for persistent saves,
 - fixes `boolean` being compiled with different sizes in different files, which corrupted memory and made single-player games start in deathmatch mode.
 
 With the [Emscripten SDK](https://emscripten.org/docs/getting_started/downloads.html) activated:

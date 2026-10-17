@@ -129,6 +129,8 @@
     <div><kbd>1</kbd>–<kbd>7</kbd> switch weapon</div>
     <div><kbd>Tab</kbd> map</div>
     <div><kbd>Esc</kbd> menu (release mouse)</div>
+    <div><kbd>Enter</kbd> / <kbd>Space</kbd> select in menus</div>
+    <div>Save: menu → Save Game → pick slot → type name → <kbd>Enter</kbd></div>
     <div><kbd>F</kbd> fullscreen</div>
   </section>
 
@@ -147,7 +149,22 @@
     const canvas = document.getElementById("canvas");
     let ready = false;
 
-    const args = ["-iwad", "freedoom1.wad", "-file", "lms.wad", "-window", "-nogui", "-config", "default.cfg"];
+    // Saves and settings live in /saves, which is backed by the browser's IndexedDB.
+    const SAVE_DIR = "/saves";
+    const CONFIG = SAVE_DIR + "/lms.cfg";
+    const args = ["-iwad", "freedoom1.wad", "-file", "lms.wad", "-window", "-nogui",
+                  "-config", CONFIG, "-savedir", SAVE_DIR];
+    let persistent = false;
+    let syncing = false;
+
+    function syncSaves() {
+      if (!persistent || syncing) return;
+      syncing = true;
+      Module.FS.syncfs(false, (err) => {
+        syncing = false;
+        if (err) console.warn("Could not store saves:", err);
+      });
+    }
 
     var Module = {
       noInitialRun: true,
@@ -156,6 +173,22 @@
         Module.FS.createPreloadedFile("", "freedoom1.wad", "freedoom1.wad", true, true);
         Module.FS.createPreloadedFile("", "lms.wad", "lms.wad", true, true);
         Module.FS.createPreloadedFile("", "default.cfg", "default.cfg", true, true);
+
+        // Load earlier saves before the game starts. If IndexedDB is unavailable
+        // (e.g. some private windows), the game still runs; saves just won't persist.
+        const FS = Module.FS;
+        FS.mkdir(SAVE_DIR);
+        try {
+          FS.mount(FS.filesystems.IDBFS, {}, SAVE_DIR);
+          Module.addRunDependency("saves");
+          FS.syncfs(true, (err) => {
+            persistent = !err;
+            if (err) console.warn("Saves will not persist:", err);
+            Module.removeRunDependency("saves");
+          });
+        } catch (err) {
+          console.warn("Saves will not persist:", err);
+        }
       }],
       onRuntimeInitialized() {
         ready = true;
@@ -193,7 +226,13 @@
       overlay.hidden = true;
       canvas.focus();
       if (canvas.requestPointerLock) canvas.requestPointerLock();
+      const FS = Module.FS;
+      if (!FS.analyzePath(CONFIG).exists) FS.writeFile(CONFIG, FS.readFile("/default.cfg"));
       Module.callMain(args);
+      // Write new or changed saves/settings to IndexedDB.
+      setInterval(syncSaves, 3000);
+      document.addEventListener("visibilitychange", syncSaves);
+      window.addEventListener("pagehide", syncSaves);
     }
     overlay.addEventListener("click", start);
 

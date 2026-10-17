@@ -5,6 +5,7 @@
 # plus doom-wasm.patch, which:
 #   - updates Emscripten flags for current SDKs and enables memory growth,
 #   - fixes music (OPL) startup hanging the single-threaded browser build,
+#   - lets Space select menu items; links IndexedDB (saves persist),
 #   - fixes `boolean` having different sizes in different files, which
 #     corrupted globals (single-player games started in deathmatch mode).
 #

@@ -1,5 +1,5 @@
 diff --git a/configure.ac b/configure.ac
-index ae1320b..6749d4d 100644
+index ae1320b..a35a805 100644
 --- a/configure.ac
 +++ b/configure.ac
 @@ -115,7 +115,7 @@ AS_IF([test "x$with_libpng" != xno], [
@@ -7,7 +7,7 @@ index ae1320b..6749d4d 100644
  # TODO: We currently link everything against libraries that don't need it.
  # Use the specific library CFLAGS/LIBS variables instead of setting them here.
 -EMFLAGS="-gsource-map -s INVOKE_RUN=1 -s USE_SDL=2 -s USE_SDL_MIXER=2 -s LEGACY_GL_EMULATION=0 -s USE_SDL_NET=2 -s ASSERTIONS=0 -s WASM=1 -s ALLOW_MEMORY_GROWTH=0 -s FORCE_FILESYSTEM=1 -s EXTRA_EXPORTED_RUNTIME_METHODS=[['FS','ccall']] -s SAFE_HEAP=1 -s EXIT_RUNTIME=1 -s STACK_OVERFLOW_CHECK=1 -s PROXY_POSIX_SOCKETS=0 -s USE_PTHREADS=0 -s PROXY_TO_PTHREAD=0 -s TOTAL_MEMORY=64MB -s ERROR_ON_UNDEFINED_SYMBOLS=0 -s ASYNCIFY -O3 --source-map-base /"
-+EMFLAGS="-s USE_SDL=2 -s USE_SDL_MIXER=2 -s USE_SDL_NET=2 -s ASSERTIONS=0 -s WASM=1 -s ALLOW_MEMORY_GROWTH=1 -s INITIAL_MEMORY=128MB -s FORCE_FILESYSTEM=1 -s EXPORTED_RUNTIME_METHODS=[FS,ccall,callMain] -s EXIT_RUNTIME=1 -s USE_PTHREADS=0 -s ERROR_ON_UNDEFINED_SYMBOLS=0 -s ASYNCIFY -O3"
++EMFLAGS="-s USE_SDL=2 -s USE_SDL_MIXER=2 -s USE_SDL_NET=2 -s ASSERTIONS=0 -s WASM=1 -s ALLOW_MEMORY_GROWTH=1 -s INITIAL_MEMORY=128MB -s FORCE_FILESYSTEM=1 -s EXPORTED_RUNTIME_METHODS=[FS,ccall,callMain] -s EXIT_RUNTIME=1 -s USE_PTHREADS=0 -s ERROR_ON_UNDEFINED_SYMBOLS=0 -s ASYNCIFY -O3 -lidbfs.js"
  
  CFLAGS="$CFLAGS $SDL_CFLAGS ${SAMPLERATE_CFLAGS:-} ${PNG_CFLAGS:-} $EMFLAGS"
  LDFLAGS="$LDFLAGS $SDL_LIBS ${SAMPLERATE_LIBS:-} ${PNG_LIBS:-} $EMFLAGS -lwebsocket.js"
@@ -61,6 +61,22 @@ index a1aa1d9..718630c 100644
  
      // Clean up.
  
+diff --git a/src/doom/m_menu.c b/src/doom/m_menu.c
+index 0da4869..11ae9d3 100644
+--- a/src/doom/m_menu.c
++++ b/src/doom/m_menu.c
+@@ -1805,9 +1805,9 @@ boolean M_Responder (event_t* ev)
+ 	}
+ 	return true;
+     }
+-    else if (key == key_menu_forward)
++    else if (key == key_menu_forward || key == ' ')
+     {
+-        // Activate menu item
++        // Activate menu item (Space also works, as most players expect)
+ 
+ 	if (currentMenu->menuitems[itemOn].routine &&
+ 	    currentMenu->menuitems[itemOn].status)
 diff --git a/src/doomtype.h b/src/doomtype.h
 index 9947a07..36429a5 100644
 --- a/src/doomtype.h
